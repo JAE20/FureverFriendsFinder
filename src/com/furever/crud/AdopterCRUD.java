@@ -9,11 +9,16 @@ package com.furever.crud;
  * @author jerimiahtongco
  */
 
-import com.furever.database.DbConnection;
-import com.furever.models.Adopter;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.furever.database.DbConnection;
+import com.furever.models.Adopter;
 
 /**
  * CRUD operations for Adopter entity
@@ -295,5 +300,68 @@ public class AdopterCRUD {
         adopter.setAdopterUsername(rs.getString("adopter_username"));
         adopter.setAdopterPassword(rs.getString("adopter_password"));
         return adopter;
+    }
+    
+    /**
+     * Creates an adopter profile automatically linked to a user account
+     * @param username Username from users table to link to
+     * @param name Display name for the adopter
+     * @param contact Contact number
+     * @param email Email address (should match user's email)
+     * @param address Physical address
+     * @return true if adopter profile was created successfully, false otherwise
+     */
+    public boolean createAdopterProfileForUser(String username, String name, String contact, String email, String address) {
+        String sql = "INSERT INTO tbl_adopter (username, adopter_name, adopter_contact, adopter_email, adopter_address, adopter_username, adopter_password) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+            
+            pstmt.setString(1, username);      // Link to users.username
+            pstmt.setString(2, name);          // Display name
+            pstmt.setString(3, contact);       // Contact number
+            pstmt.setString(4, email);         // Email address
+            pstmt.setString(5, address);       // Address
+            pstmt.setString(6, username);      // Legacy adopter_username field
+            pstmt.setString(7, "legacy");      // Legacy adopter_password field
+            
+            int rowsAffected = pstmt.executeUpdate();
+            
+            if (rowsAffected > 0) {
+                System.out.println("Adopter profile created successfully for user: " + username);
+                return true;
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error creating adopter profile for user: " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Gets adopter by linked username (from users table)
+     * @param username Username from users table
+     * @return Adopter object if found, null otherwise
+     */
+    public Adopter getAdopterByLinkedUsername(String username) {
+        String sql = "SELECT * FROM tbl_adopter WHERE username = ?";
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setString(1, username);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return extractAdopterFromResultSet(rs);
+                }
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving adopter by linked username: " + e.getMessage());
+        }
+        
+        return null;
     }
 }

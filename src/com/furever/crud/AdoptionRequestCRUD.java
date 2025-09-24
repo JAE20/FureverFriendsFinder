@@ -8,11 +8,18 @@ package com.furever.crud;
  *
  * @author jerimiahtongco
  */
-import com.furever.database.DbConnection;
-import com.furever.models.AdoptionRequest;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.Date;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.sql.Types;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.furever.database.DbConnection;
+import com.furever.models.AdoptionRequest;
 
 /**
  * CRUD operations for AdoptionRequest entity
@@ -229,6 +236,61 @@ public class AdoptionRequestCRUD {
         }
         
         return false;
+    }
+    
+    /**
+     * Checks if an adopter already has an approved request for a specific pet
+     * @param adopterId Adopter ID to check
+     * @param petId Pet ID to check
+     * @return true if adopter already has an approved request for this pet, false otherwise
+     */
+    public boolean hasApprovedRequestForPet(int adopterId, int petId) {
+        String sql = "SELECT COUNT(*) FROM tbl_adoption_request WHERE adopter_id = ? AND pet_id = ? AND status = 'Approved'";
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, adopterId);
+            pstmt.setInt(2, petId);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                if (rs.next()) {
+                    return rs.getInt(1) > 0;
+                }
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error checking for existing approved requests: " + e.getMessage());
+        }
+        
+        return false;
+    }
+    
+    /**
+     * Approves an adoption request with constraint checking
+     * @param requestId Adoption request ID to approve
+     * @param approvalDate Date of approval
+     * @param remarks Approval remarks
+     * @return true if request was approved successfully, false otherwise
+     */
+    public boolean approveAdoptionRequestSafely(int requestId, Date approvalDate, String remarks) {
+        // First, get the adoption request details
+        AdoptionRequest request = getAdoptionRequestById(requestId);
+        if (request == null) {
+            System.out.println("❌ ERROR: Adoption request not found.");
+            return false;
+        }
+        
+        // Check if adopter already has an approved request for this pet
+        if (hasApprovedRequestForPet(request.getAdopterId(), request.getPetId())) {
+            System.out.println("❌ ERROR: This adopter already has an approved request for this pet.");
+            System.out.println("   Only one approved request per adopter per pet is allowed.");
+            System.out.println("   Please reject the existing approved request first if needed.");
+            return false;
+        }
+        
+        // If no conflict, proceed with approval
+        return approveAdoptionRequest(requestId, approvalDate, remarks);
     }
     
     /**

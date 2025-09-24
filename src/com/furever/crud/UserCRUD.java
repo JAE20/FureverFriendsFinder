@@ -8,11 +8,16 @@ package com.furever.crud;
  *
  * @author jerimiahtongco
  */
-import com.furever.database.DbConnection;
-import com.furever.models.User;
-import java.sql.*;
+import java.sql.Connection;
+import java.sql.PreparedStatement;
+import java.sql.ResultSet;
+import java.sql.SQLException;
+import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+
+import com.furever.database.DbConnection;
+import com.furever.models.User;
 
 /**
  * CRUD operations for User entity
@@ -20,16 +25,22 @@ import java.util.List;
 public class UserCRUD {
     
     /**
-     * Creates a new user in the database
+     * Creates a new user in the database and automatically creates corresponding profile
      * @param user User object to create
      * @return true if user was created successfully, false otherwise
      */
     public boolean createUser(User user) {
         String sql = "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)";
         
-        try (Connection conn = DbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS)) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        ResultSet generatedKeys = null;
+        
+        try {
+            conn = DbConnection.getConnection();
+            conn.setAutoCommit(false); // Start transaction
             
+            pstmt = conn.prepareStatement(sql, Statement.RETURN_GENERATED_KEYS);
             pstmt.setString(1, user.getUsername());
             pstmt.setString(2, user.getEmail());
             pstmt.setString(3, user.getPassword());
@@ -38,20 +49,101 @@ public class UserCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                try (ResultSet generatedKeys = pstmt.getGeneratedKeys()) {
-                    if (generatedKeys.next()) {
-                        user.setId(generatedKeys.getInt(1));
-                    }
+                generatedKeys = pstmt.getGeneratedKeys();
+                if (generatedKeys.next()) {
+                    user.setId(generatedKeys.getInt(1));
                 }
-                System.out.println("User created successfully with ID: " + user.getId());
-                return true;
+                
+                // Automatically create corresponding profile based on role
+                boolean profileCreated = true;
+                if ("adopter".equals(user.getRole())) {
+                    profileCreated = createAdopterProfile(conn, user);
+                } else if ("pet_owner".equals(user.getRole())) {
+                    profileCreated = createPetOwnerProfile(conn, user);
+                }
+                
+                if (profileCreated) {
+                    conn.commit(); // Commit transaction
+                    System.out.println("User created successfully with ID: " + user.getId());
+                    if (!"admin".equals(user.getRole())) {
+                        System.out.println("Corresponding " + user.getRole() + " profile created automatically.");
+                    }
+                    return true;
+                } else {
+                    conn.rollback(); // Rollback if profile creation failed
+                    System.err.println("User creation rolled back due to profile creation failure.");
+                }
             }
             
         } catch (SQLException e) {
+            try {
+                if (conn != null) {
+                    conn.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error during rollback: " + rollbackEx.getMessage());
+            }
             System.err.println("Error creating user: " + e.getMessage());
+        } finally {
+            try {
+                if (generatedKeys != null) generatedKeys.close();
+                if (pstmt != null) pstmt.close();
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                }
+            } catch (SQLException closeEx) {
+                System.err.println("Error closing resources: " + closeEx.getMessage());
+            }
         }
         
         return false;
+    }
+    
+    /**
+     * Creates an adopter profile for a user
+     * @param conn Database connection (should be in transaction)
+     * @param user User for whom to create adopter profile
+     * @return true if profile was created successfully, false otherwise
+     */
+    private boolean createAdopterProfile(Connection conn, User user) throws SQLException {
+        String sql = "INSERT INTO tbl_adopter (username, adopter_name, adopter_contact, adopter_email, adopter_address, adopter_username, adopter_password) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, user.getUsername()); // Link to users.username
+            pstmt.setString(2, user.getUsername()); // Use username as display name initially
+            pstmt.setString(3, "09000000000"); // Default contact (user can update later)
+            pstmt.setString(4, user.getEmail());
+            pstmt.setString(5, "Address not provided"); // Default address
+            pstmt.setString(6, user.getUsername()); // Legacy username field
+            pstmt.setString(7, user.getPassword()); // Legacy password field
+            
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        }
+    }
+    
+    /**
+     * Creates a pet owner profile for a user
+     * @param conn Database connection (should be in transaction)
+     * @param user User for whom to create pet owner profile
+     * @return true if profile was created successfully, false otherwise
+     */
+    private boolean createPetOwnerProfile(Connection conn, User user) throws SQLException {
+        String sql = "INSERT INTO tbl_pet_owner (username, pet_owner_name, pet_owner_contact, pet_owner_email, pet_owner_address, pet_owner_username, pet_owner_password) VALUES (?, ?, ?, ?, ?, ?, ?)";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, user.getUsername()); // Link to users.username
+            pstmt.setString(2, user.getUsername()); // Use username as display name initially
+            pstmt.setString(3, "09000000000"); // Default contact (user can update later)
+            pstmt.setString(4, user.getEmail());
+            pstmt.setString(5, "Address not provided"); // Default address
+            pstmt.setString(6, user.getUsername()); // Legacy username field
+            pstmt.setString(7, user.getPassword()); // Legacy password field
+            
+            int rowsAffected = pstmt.executeUpdate();
+            return rowsAffected > 0;
+        }
     }
     
     /**
@@ -158,16 +250,28 @@ public class UserCRUD {
     }
     
     /**
-     * Updates an existing user
+     * Updates an existing user and manages corresponding profile changes
      * @param user User object with updated information
      * @return true if user was updated successfully, false otherwise
      */
     public boolean updateUser(User user) {
+        // First get the current user to check for role changes
+        User currentUser = getUserById(user.getId());
+        if (currentUser == null) {
+            System.out.println("No user found with ID: " + user.getId());
+            return false;
+        }
+        
         String sql = "UPDATE users SET username = ?, email = ?, password = ?, role = ? WHERE id = ?";
         
-        try (Connection conn = DbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+        Connection conn = null;
+        PreparedStatement pstmt = null;
+        
+        try {
+            conn = DbConnection.getConnection();
+            conn.setAutoCommit(false); // Start transaction
             
+            pstmt = conn.prepareStatement(sql);
             pstmt.setString(1, user.getUsername());
             pstmt.setString(2, user.getEmail());
             pstmt.setString(3, user.getPassword());
@@ -177,17 +281,138 @@ public class UserCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("User updated successfully.");
-                return true;
+                boolean profileHandled = true;
+                
+                // Handle role changes
+                if (!currentUser.getRole().equals(user.getRole())) {
+                    System.out.println("Role changed from " + currentUser.getRole() + " to " + user.getRole());
+                    
+                    // Archive old profile if role changed away from adopter/pet_owner
+                    if ("adopter".equals(currentUser.getRole()) && !"adopter".equals(user.getRole())) {
+                        profileHandled = archiveAdopterProfile(conn, currentUser.getUsername());
+                    } else if ("pet_owner".equals(currentUser.getRole()) && !"pet_owner".equals(user.getRole())) {
+                        profileHandled = archivePetOwnerProfile(conn, currentUser.getUsername());
+                    }
+                    
+                    // Create new profile if role changed to adopter/pet_owner
+                    if (profileHandled) {
+                        if ("adopter".equals(user.getRole()) && !"adopter".equals(currentUser.getRole())) {
+                            profileHandled = createAdopterProfile(conn, user);
+                        } else if ("pet_owner".equals(user.getRole()) && !"pet_owner".equals(currentUser.getRole())) {
+                            profileHandled = createPetOwnerProfile(conn, user);
+                        }
+                    }
+                } else {
+                    // Same role, update profile information if needed
+                    if ("adopter".equals(user.getRole())) {
+                        profileHandled = updateAdopterProfile(conn, user);
+                    } else if ("pet_owner".equals(user.getRole())) {
+                        profileHandled = updatePetOwnerProfile(conn, user);
+                    }
+                }
+                
+                if (profileHandled) {
+                    conn.commit(); // Commit transaction
+                    System.out.println("User updated successfully.");
+                    return true;
+                } else {
+                    conn.rollback(); // Rollback if profile handling failed
+                    System.err.println("User update rolled back due to profile handling failure.");
+                }
             } else {
                 System.out.println("No user found with ID: " + user.getId());
             }
             
         } catch (SQLException e) {
+            try {
+                if (conn != null) {
+                    conn.rollback();
+                }
+            } catch (SQLException rollbackEx) {
+                System.err.println("Error during rollback: " + rollbackEx.getMessage());
+            }
             System.err.println("Error updating user: " + e.getMessage());
+        } finally {
+            try {
+                if (pstmt != null) pstmt.close();
+                if (conn != null) {
+                    conn.setAutoCommit(true);
+                    conn.close();
+                }
+            } catch (SQLException closeEx) {
+                System.err.println("Error closing resources: " + closeEx.getMessage());
+            }
         }
         
         return false;
+    }
+    
+    /**
+     * Archives an adopter profile (sets archived flag)
+     * @param conn Database connection (should be in transaction)
+     * @param username Username of the adopter to archive
+     * @return true if profile was archived successfully, false otherwise
+     */
+    private boolean archiveAdopterProfile(Connection conn, String username) throws SQLException {
+        String sql = "UPDATE tbl_adopter SET archived = 1, archived_date = NOW() WHERE username = ?";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            pstmt.executeUpdate();
+            System.out.println("Adopter profile archived for username: " + username);
+            return true;
+        }
+    }
+    
+    /**
+     * Archives a pet owner profile (sets archived flag)
+     * @param conn Database connection (should be in transaction)
+     * @param username Username of the pet owner to archive
+     * @return true if profile was archived successfully, false otherwise
+     */
+    private boolean archivePetOwnerProfile(Connection conn, String username) throws SQLException {
+        String sql = "UPDATE tbl_pet_owner SET archived = 1, archived_date = NOW() WHERE username = ?";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, username);
+            pstmt.executeUpdate();
+            System.out.println("Pet owner profile archived for username: " + username);
+            return true;
+        }
+    }
+    
+    /**
+     * Updates adopter profile information based on user changes
+     * @param conn Database connection (should be in transaction)
+     * @param user User with updated information
+     * @return true if profile was updated successfully, false otherwise
+     */
+    private boolean updateAdopterProfile(Connection conn, User user) throws SQLException {
+        String sql = "UPDATE tbl_adopter SET adopter_email = ? WHERE username = ? AND archived = 0";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, user.getEmail());
+            pstmt.setString(2, user.getUsername());
+            pstmt.executeUpdate();
+            return true;
+        }
+    }
+    
+    /**
+     * Updates pet owner profile information based on user changes
+     * @param conn Database connection (should be in transaction)
+     * @param user User with updated information
+     * @return true if profile was updated successfully, false otherwise
+     */
+    private boolean updatePetOwnerProfile(Connection conn, User user) throws SQLException {
+        String sql = "UPDATE tbl_pet_owner SET pet_owner_email = ? WHERE username = ? AND archived = 0";
+        
+        try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            pstmt.setString(1, user.getEmail());
+            pstmt.setString(2, user.getUsername());
+            pstmt.executeUpdate();
+            return true;
+        }
     }
     
     /**

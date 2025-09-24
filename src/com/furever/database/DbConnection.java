@@ -44,7 +44,7 @@ public class DbConnection {
             // Create connection if it doesn't exist or is closed
             if (connection == null || connection.isClosed()) {
                 connection = DriverManager.getConnection(DB_URL, DB_USERNAME, DB_PASSWORD);
-                System.out.println("Database connection established successfully.");
+                // Connection established - ready for database operations
             }
             
             return connection;
@@ -63,7 +63,7 @@ public class DbConnection {
         try {
             if (connection != null && !connection.isClosed()) {
                 connection.close();
-                System.out.println("Database connection closed successfully.");
+                // Connection closed successfully
             }
         } catch (SQLException e) {
             System.err.println("Error closing database connection: " + e.getMessage());

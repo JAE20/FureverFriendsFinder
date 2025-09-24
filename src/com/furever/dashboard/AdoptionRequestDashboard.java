@@ -8,6 +8,8 @@ package com.furever.dashboard;
  *
  * @author jerimiahtongco
  */
+import java.sql.Date;
+import java.util.List;
 
 import com.furever.crud.AdopterCRUD;
 import com.furever.crud.AdoptionRequestCRUD;
@@ -16,8 +18,6 @@ import com.furever.models.Adopter;
 import com.furever.models.AdoptionRequest;
 import com.furever.models.Pet;
 import com.furever.utils.InputValidator;
-import java.sql.Date;
-import java.util.List;
 
 /**
  * Dashboard for managing AdoptionRequest operations
@@ -312,6 +312,18 @@ public class AdoptionRequestDashboard {
                 return;
             }
             
+            // Check if there's already an approved request for the same adopter and pet
+            List<AdoptionRequest> existingApproved = adoptionRequestCRUD.getAdoptionRequestsByPet(request.getPetId());
+            boolean hasApprovedRequest = existingApproved.stream()
+                .anyMatch(r -> r.getAdopterId() == request.getAdopterId() && "Approved".equals(r.getStatus()));
+            
+            if (hasApprovedRequest) {
+                InputValidator.displayWarning("This adopter already has an approved request for this pet.");
+                System.out.println("Cannot approve multiple requests from the same adopter for the same pet.");
+                System.out.println("You may want to reject this request instead.");
+                return;
+            }
+            
             displayRequestDetails(request);
             
             if (!InputValidator.getConfirmation("Do you want to approve this request?")) {
@@ -332,6 +344,17 @@ public class AdoptionRequestDashboard {
                     petCRUD.updatePet(pet);
                     System.out.println("Pet status updated to Adopted.");
                 }
+                
+                // Auto-reject other pending requests for the same pet
+                List<AdoptionRequest> otherPendingRequests = adoptionRequestCRUD.getAdoptionRequestsByPet(request.getPetId());
+                for (AdoptionRequest otherRequest : otherPendingRequests) {
+                    if (otherRequest.getAdoptionRequestId() != requestId && "Pending".equals(otherRequest.getStatus())) {
+                        adoptionRequestCRUD.rejectAdoptionRequest(otherRequest.getAdoptionRequestId(), 
+                            "Automatically rejected - pet adopted by another adopter");
+                    }
+                }
+                System.out.println("Other pending requests for this pet have been automatically rejected.");
+                
             } else {
                 InputValidator.displayError("Failed to approve adoption request.");
             }
@@ -492,15 +515,34 @@ public class AdoptionRequestDashboard {
      * Displays adoption requests in table format
      */
     private void displayRequestsTable(List<AdoptionRequest> requests) {
-        System.out.printf("%-5s %-8s %-10s %-12s %-10s %-12s%n", 
-            "ID", "Pet ID", "Adopter ID", "Date", "Status", "Approval");
-        System.out.println("-".repeat(70));
+        System.out.printf("%-5s %-20s %-20s %-12s %-10s %-12s%n", 
+            "ID", "Pet Name", "Adopter Name", "Date", "Status", "Approval");
+        System.out.println("-".repeat(85));
         
         for (AdoptionRequest request : requests) {
-            System.out.printf("%-5d %-8d %-10d %-12s %-10s %-12s%n",
+            // Fetch pet and adopter details for better display
+            String petName = "Unknown";
+            String adopterName = "Unknown";
+            
+            try {
+                Pet pet = petCRUD.getPetById(request.getPetId());
+                if (pet != null) {
+                    petName = pet.getPetName();
+                }
+                
+                Adopter adopter = adopterCRUD.getAdopterById(request.getAdopterId());
+                if (adopter != null) {
+                    adopterName = adopter.getAdopterName();
+                }
+            } catch (Exception e) {
+                // If there's an error fetching names, we'll use "Unknown"
+                System.err.println("Error fetching pet/adopter details: " + e.getMessage());
+            }
+            
+            System.out.printf("%-5d %-20s %-20s %-12s %-10s %-12s%n",
                 request.getAdoptionRequestId(),
-                request.getPetId(),
-                request.getAdopterId(),
+                petName.length() > 19 ? petName.substring(0, 16) + "..." : petName,
+                adopterName.length() > 19 ? adopterName.substring(0, 16) + "..." : adopterName,
                 request.getRequestDate() != null ? request.getRequestDate().toString() : "N/A",
                 request.getStatus(),
                 request.getApprovalDate() != null ? request.getApprovalDate().toString() : "N/A");
