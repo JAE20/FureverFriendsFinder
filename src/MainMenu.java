@@ -9,6 +9,7 @@
  */
 import com.furever.crud.PetOwnerCRUD;
 import com.furever.crud.UserCRUD;
+import com.furever.dashboard.AdminArchiveDashboard;
 import com.furever.dashboard.AdopterDashboard;
 import com.furever.dashboard.AdoptionRequestDashboard;
 import com.furever.dashboard.PetDashboard;
@@ -31,6 +32,7 @@ public class MainMenu {
     private final PetDashboard petDashboard;
     private final PetOwnerDashboard petOwnerDashboard;
     private final AdoptionRequestDashboard adoptionRequestDashboard;
+    private final AdminArchiveDashboard adminArchiveDashboard;
     
     private User currentUser;
     
@@ -42,6 +44,7 @@ public class MainMenu {
         this.petDashboard = new PetDashboard();
         this.petOwnerDashboard = new PetOwnerDashboard();
         this.adoptionRequestDashboard = new AdoptionRequestDashboard();
+        this.adminArchiveDashboard = new AdminArchiveDashboard();
     }
     
     /**
@@ -256,12 +259,13 @@ public class MainMenu {
             System.out.println("3. Pet Owner Management");
             System.out.println("4. Pet Management");
             System.out.println("5. Adoption Request Management");
-            System.out.println("6. System Statistics");
-            System.out.println("7. Database Status");
-            System.out.println("8. Logout");
+            System.out.println("6. Archive Management");
+            System.out.println("7. System Statistics");
+            System.out.println("8. Database Status");
+            System.out.println("9. Logout");
             System.out.println("-".repeat(60));
             
-            int choice = InputValidator.getIntInput("Enter your choice (1-8): ", 1, 8);
+            int choice = InputValidator.getIntInput("Enter your choice (1-9): ", 1, 9);
             
             switch (choice) {
                 case 1:
@@ -280,12 +284,15 @@ public class MainMenu {
                     adoptionRequestDashboard.showAdoptionRequestMenu();
                     break;
                 case 6:
-                    showSystemStatistics();
+                    adminArchiveDashboard.showArchiveManagementMenu();
                     break;
                 case 7:
-                    showDatabaseStatus();
+                    showSystemStatistics();
                     break;
                 case 8:
+                    showDatabaseStatus();
+                    break;
+                case 9:
                     currentUser = null;
                     InputValidator.displaySuccess("Logged out successfully.");
                     return;

@@ -416,32 +416,12 @@ public class UserCRUD {
     }
     
     /**
-     * Deletes a user by ID
+     * Deletes a user by ID (now archives instead of permanent deletion)
      * @param userId User ID to delete
-     * @return true if user was deleted successfully, false otherwise
+     * @return true if user was archived successfully, false otherwise
      */
     public boolean deleteUser(int userId) {
-        String sql = "DELETE FROM users WHERE id = ?";
-        
-        try (Connection conn = DbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setInt(1, userId);
-            
-            int rowsAffected = pstmt.executeUpdate();
-            
-            if (rowsAffected > 0) {
-                System.out.println("User deleted successfully.");
-                return true;
-            } else {
-                System.out.println("No user found with ID: " + userId);
-            }
-            
-        } catch (SQLException e) {
-            System.err.println("Error deleting user: " + e.getMessage());
-        }
-        
-        return false;
+        return archiveUser(userId, null, "User deleted via admin dashboard");
     }
     
     /**
@@ -509,5 +489,250 @@ public class UserCRUD {
         user.setRole(rs.getString("role"));
         user.setCreatedAt(rs.getTimestamp("created_at"));
         return user;
+    }
+    
+    /**
+     * Archives a user by moving them to the archive table
+     * @param userId ID of the user to archive
+     * @param archivedByUserId ID of the user performing the archive operation
+     * @param reason Reason for archiving
+     * @return true if archiving was successful, false otherwise
+     */
+    public boolean archiveUser(int userId, Integer archivedByUserId, String reason) {
+        String selectUserSql = "SELECT * FROM users WHERE id = ?";
+        String insertArchiveSql = "INSERT INTO users_archive (id, username, email, password, role, created_at, archived, archived_date, archived_by_user_id, archive_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String deleteUserSql = "DELETE FROM users WHERE id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Get the user record to archive
+            User user = null;
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectUserSql)) {
+                selectStmt.setInt(1, userId);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    if (rs.next()) {
+                        user = new User();
+                        user.setId(rs.getInt("id"));
+                        user.setUsername(rs.getString("username"));
+                        user.setEmail(rs.getString("email"));
+                        user.setPassword(rs.getString("password"));
+                        user.setRole(rs.getString("role"));
+                        user.setCreatedAt(rs.getTimestamp("created_at"));
+                    } else {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            }
+            
+            // Insert into archive table
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertArchiveSql)) {
+                insertStmt.setInt(1, user.getId());
+                insertStmt.setString(2, user.getUsername());
+                insertStmt.setString(3, user.getEmail());
+                insertStmt.setString(4, user.getPassword());
+                insertStmt.setString(5, user.getRole());
+                insertStmt.setTimestamp(6, user.getCreatedAt());
+                insertStmt.setBoolean(7, true);
+                insertStmt.setTimestamp(8, new java.sql.Timestamp(System.currentTimeMillis()));
+                if (archivedByUserId != null) {
+                    insertStmt.setInt(9, archivedByUserId);
+                } else {
+                    insertStmt.setNull(9, java.sql.Types.INTEGER);
+                }
+                insertStmt.setString(10, reason);
+                
+                insertStmt.executeUpdate();
+            }
+            
+            // Delete from main table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteUserSql)) {
+                deleteStmt.setInt(1, userId);
+                deleteStmt.executeUpdate();
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "users");
+                logStmt.setInt(2, userId);
+                logStmt.setString(3, "ARCHIVE");
+                if (archivedByUserId != null) {
+                    logStmt.setInt(4, archivedByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error archiving user: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Restores a user from archive back to the main table
+     * @param userId ID of the user to restore
+     * @param restoredByUserId ID of the user performing the restore operation
+     * @param reason Reason for restoring
+     * @return true if restoration was successful, false otherwise
+     */
+    public boolean restoreUser(int userId, Integer restoredByUserId, String reason) {
+        String selectArchiveSql = "SELECT * FROM users_archive WHERE id = ?";
+        String insertMainSql = "INSERT INTO users (id, username, email, password, role, created_at, archived, archived_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        String deleteArchiveSql = "DELETE FROM users_archive WHERE id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Get the user record from archive
+            User user = null;
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectArchiveSql)) {
+                selectStmt.setInt(1, userId);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    if (rs.next()) {
+                        user = new User();
+                        user.setId(rs.getInt("id"));
+                        user.setUsername(rs.getString("username"));
+                        user.setEmail(rs.getString("email"));
+                        user.setPassword(rs.getString("password"));
+                        user.setRole(rs.getString("role"));
+                        user.setCreatedAt(rs.getTimestamp("created_at"));
+                    } else {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            }
+            
+            // Insert user back into main table
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertMainSql)) {
+                insertStmt.setInt(1, user.getId());
+                insertStmt.setString(2, user.getUsername());
+                insertStmt.setString(3, user.getEmail());
+                insertStmt.setString(4, user.getPassword());
+                insertStmt.setString(5, user.getRole());
+                insertStmt.setTimestamp(6, user.getCreatedAt());
+                insertStmt.setBoolean(7, false);
+                insertStmt.setNull(8, java.sql.Types.TIMESTAMP);
+                
+                insertStmt.executeUpdate();
+            }
+            
+            // Delete from archive table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteArchiveSql)) {
+                deleteStmt.setInt(1, userId);
+                deleteStmt.executeUpdate();
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "users");
+                logStmt.setInt(2, userId);
+                logStmt.setString(3, "RESTORE");
+                if (restoredByUserId != null) {
+                    logStmt.setInt(4, restoredByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error restoring user: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Permanently deletes a user from the archive table
+     * @param userId ID of the user to permanently delete
+     * @param deletedByUserId ID of the user performing the permanent deletion
+     * @param reason Reason for permanent deletion
+     * @return true if permanent deletion was successful, false otherwise
+     */
+    public boolean permanentDeleteUser(int userId, Integer deletedByUserId, String reason) {
+        String deleteUserSql = "DELETE FROM users_archive WHERE id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Delete user from archive table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteUserSql)) {
+                deleteStmt.setInt(1, userId);
+                int rowsAffected = deleteStmt.executeUpdate();
+                
+                if (rowsAffected == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "users");
+                logStmt.setInt(2, userId);
+                logStmt.setString(3, "PERMANENT_DELETE");
+                if (deletedByUserId != null) {
+                    logStmt.setInt(4, deletedByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error permanently deleting user: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Gets all archived users
+     * @return List of archived users
+     */
+    public List<User> getAllArchivedUsers() {
+        List<User> users = new ArrayList<>();
+        String sql = "SELECT * FROM users_archive ORDER BY archived_date DESC";
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                User user = new User();
+                user.setId(rs.getInt("id"));
+                user.setUsername(rs.getString("username"));
+                user.setEmail(rs.getString("email"));
+                user.setPassword(rs.getString("password"));
+                user.setRole(rs.getString("role"));
+                user.setCreatedAt(rs.getTimestamp("created_at"));
+                users.add(user);
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving archived users: " + e.getMessage());
+        }
+        
+        return users;
     }
 }

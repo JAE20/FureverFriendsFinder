@@ -51,7 +51,7 @@ public class AdoptionRequestDashboard {
             System.out.println("9. Approve Request");
             System.out.println("10. Reject Request");
             System.out.println("11. Update Request");
-            System.out.println("12. Delete Request");
+            System.out.println("12. Archive Request");
             System.out.println("13. View Statistics");
             System.out.println("14. Return to Main Menu");
             System.out.println("-".repeat(60));
@@ -452,10 +452,10 @@ public class AdoptionRequestDashboard {
      * Deletes an adoption request
      */
     private void deleteRequest() {
-        InputValidator.displayHeader("DELETE ADOPTION REQUEST");
+        InputValidator.displayHeader("ARCHIVE ADOPTION REQUEST");
         
         try {
-            int requestId = InputValidator.getIntInput("Enter request ID to delete: ");
+            int requestId = InputValidator.getIntInput("Enter request ID to archive: ");
             AdoptionRequest request = adoptionRequestCRUD.getAdoptionRequestById(requestId);
             
             if (request == null) {
@@ -463,21 +463,31 @@ public class AdoptionRequestDashboard {
                 return;
             }
             
-            System.out.println("Request to be deleted:");
+            System.out.println("Request to be archived:");
             displayRequestDetails(request);
             
-            if (InputValidator.getConfirmation("Are you sure you want to delete this request?")) {
-                if (adoptionRequestCRUD.deleteAdoptionRequest(requestId)) {
-                    InputValidator.displaySuccess("Adoption request deleted successfully!");
+            System.out.println("\nNote: Archiving will move this request to archive storage where it can be restored later if needed.");
+            
+            if (InputValidator.getConfirmation("Are you sure you want to archive this request?")) {
+                String reason = InputValidator.getStringInput("Enter reason for archiving (optional): ", true);
+                if (reason.isEmpty()) {
+                    reason = "Manual archive via dashboard";
+                }
+                
+                // For now, we'll use null for user ID - in a full implementation, 
+                // this would come from the current logged-in user
+                if (adoptionRequestCRUD.archiveAdoptionRequest(requestId, null, reason)) {
+                    InputValidator.displaySuccess("Adoption request archived successfully!");
+                    System.out.println("The request has been moved to archive storage and can be restored by an administrator if needed.");
                 } else {
-                    InputValidator.displayError("Failed to delete adoption request.");
+                    InputValidator.displayError("Failed to archive adoption request.");
                 }
             } else {
-                System.out.println("Deletion cancelled.");
+                System.out.println("Archive operation cancelled.");
             }
             
         } catch (Exception e) {
-            InputValidator.displayError("An error occurred while deleting request: " + e.getMessage());
+            InputValidator.displayError("An error occurred while archiving request: " + e.getMessage());
         }
     }
     

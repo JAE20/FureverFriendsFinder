@@ -8,7 +8,6 @@ package com.furever.crud;
  *
  * @author jerimiahtongco
  */
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -206,32 +205,12 @@ public class AdopterCRUD {
     }
     
     /**
-     * Deletes an adopter by ID
+     * Deletes an adopter by ID (now archives instead of permanent deletion)
      * @param adopterId Adopter ID to delete
-     * @return true if adopter was deleted successfully, false otherwise
+     * @return true if adopter was archived successfully, false otherwise
      */
     public boolean deleteAdopter(int adopterId) {
-        String sql = "DELETE FROM tbl_adopter WHERE adopter_id = ?";
-        
-        try (Connection conn = DbConnection.getConnection();
-             PreparedStatement pstmt = conn.prepareStatement(sql)) {
-            
-            pstmt.setInt(1, adopterId);
-            
-            int rowsAffected = pstmt.executeUpdate();
-            
-            if (rowsAffected > 0) {
-                System.out.println("Adopter deleted successfully.");
-                return true;
-            } else {
-                System.out.println("No adopter found with ID: " + adopterId);
-            }
-            
-        } catch (SQLException e) {
-            System.err.println("Error deleting adopter: " + e.getMessage());
-        }
-        
-        return false;
+        return archiveAdopter(adopterId, null, "Adopter deleted via admin dashboard");
     }
     
     /**
@@ -363,5 +342,267 @@ public class AdopterCRUD {
         }
         
         return null;
+    }
+    
+    /**
+     * Archives an adopter by moving them to the archive table
+     * @param adopterId ID of the adopter to archive
+     * @param archivedByUserId ID of the user performing the archive operation
+     * @param reason Reason for archiving
+     * @return true if archiving was successful, false otherwise
+     */
+    public boolean archiveAdopter(int adopterId, Integer archivedByUserId, String reason) {
+        String selectAdopterSql = "SELECT * FROM tbl_adopter WHERE adopter_id = ?";
+        String insertArchiveSql = "INSERT INTO tbl_adopter_archive (adopter_id, username, adopter_name, adopter_contact, adopter_email, adopter_address, adopter_profile, adopter_username, adopter_password, archived, archived_date, archived_by_user_id, archive_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String deleteAdopterSql = "DELETE FROM tbl_adopter WHERE adopter_id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Get the adopter record to archive
+            Adopter adopter = null;
+            String linkedUsername = null;
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectAdopterSql)) {
+                selectStmt.setInt(1, adopterId);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    if (rs.next()) {
+                        adopter = new Adopter();
+                        adopter.setAdopterId(rs.getInt("adopter_id"));
+                        linkedUsername = rs.getString("username");
+                        adopter.setAdopterName(rs.getString("adopter_name"));
+                        adopter.setAdopterContact(rs.getString("adopter_contact"));
+                        adopter.setAdopterEmail(rs.getString("adopter_email"));
+                        adopter.setAdopterAddress(rs.getString("adopter_address"));
+                        adopter.setAdopterProfile(rs.getString("adopter_profile"));
+                        adopter.setAdopterUsername(rs.getString("adopter_username"));
+                        adopter.setAdopterPassword(rs.getString("adopter_password"));
+                    } else {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            }
+            
+            // Insert into archive table
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertArchiveSql)) {
+                insertStmt.setInt(1, adopter.getAdopterId());
+                insertStmt.setString(2, linkedUsername);
+                insertStmt.setString(3, adopter.getAdopterName());
+                insertStmt.setString(4, adopter.getAdopterContact());
+                insertStmt.setString(5, adopter.getAdopterEmail());
+                insertStmt.setString(6, adopter.getAdopterAddress());
+                insertStmt.setString(7, adopter.getAdopterProfile());
+                insertStmt.setString(8, adopter.getAdopterUsername());
+                insertStmt.setString(9, adopter.getAdopterPassword());
+                insertStmt.setBoolean(10, true);
+                insertStmt.setTimestamp(11, new java.sql.Timestamp(System.currentTimeMillis()));
+                if (archivedByUserId != null) {
+                    insertStmt.setInt(12, archivedByUserId);
+                } else {
+                    insertStmt.setNull(12, java.sql.Types.INTEGER);
+                }
+                insertStmt.setString(13, reason);
+                
+                insertStmt.executeUpdate();
+            }
+            
+            // Delete from main table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteAdopterSql)) {
+                deleteStmt.setInt(1, adopterId);
+                deleteStmt.executeUpdate();
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "tbl_adopter");
+                logStmt.setInt(2, adopterId);
+                logStmt.setString(3, "ARCHIVE");
+                if (archivedByUserId != null) {
+                    logStmt.setInt(4, archivedByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error archiving adopter: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Restores an adopter from archive back to the main table
+     * @param adopterId ID of the adopter to restore
+     * @param restoredByUserId ID of the user performing the restore operation
+     * @param reason Reason for restoring
+     * @return true if restoration was successful, false otherwise
+     */
+    public boolean restoreAdopter(int adopterId, Integer restoredByUserId, String reason) {
+        String selectArchiveSql = "SELECT * FROM tbl_adopter_archive WHERE adopter_id = ?";
+        String insertMainSql = "INSERT INTO tbl_adopter (adopter_id, username, adopter_name, adopter_contact, adopter_email, adopter_address, adopter_profile, adopter_username, adopter_password, archived, archived_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String deleteArchiveSql = "DELETE FROM tbl_adopter_archive WHERE adopter_id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Get the adopter record from archive
+            Adopter adopter = null;
+            String linkedUsername = null;
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectArchiveSql)) {
+                selectStmt.setInt(1, adopterId);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    if (rs.next()) {
+                        adopter = new Adopter();
+                        adopter.setAdopterId(rs.getInt("adopter_id"));
+                        linkedUsername = rs.getString("username");
+                        adopter.setAdopterName(rs.getString("adopter_name"));
+                        adopter.setAdopterContact(rs.getString("adopter_contact"));
+                        adopter.setAdopterEmail(rs.getString("adopter_email"));
+                        adopter.setAdopterAddress(rs.getString("adopter_address"));
+                        adopter.setAdopterProfile(rs.getString("adopter_profile"));
+                        adopter.setAdopterUsername(rs.getString("adopter_username"));
+                        adopter.setAdopterPassword(rs.getString("adopter_password"));
+                    } else {
+                        conn.rollback();
+                        return false;
+                    }
+                }
+            }
+            
+            // Insert adopter back into main table
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertMainSql)) {
+                insertStmt.setInt(1, adopter.getAdopterId());
+                insertStmt.setString(2, linkedUsername);
+                insertStmt.setString(3, adopter.getAdopterName());
+                insertStmt.setString(4, adopter.getAdopterContact());
+                insertStmt.setString(5, adopter.getAdopterEmail());
+                insertStmt.setString(6, adopter.getAdopterAddress());
+                insertStmt.setString(7, adopter.getAdopterProfile());
+                insertStmt.setString(8, adopter.getAdopterUsername());
+                insertStmt.setString(9, adopter.getAdopterPassword());
+                insertStmt.setBoolean(10, false);
+                insertStmt.setNull(11, java.sql.Types.TIMESTAMP);
+                
+                insertStmt.executeUpdate();
+            }
+            
+            // Delete from archive table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteArchiveSql)) {
+                deleteStmt.setInt(1, adopterId);
+                deleteStmt.executeUpdate();
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "tbl_adopter");
+                logStmt.setInt(2, adopterId);
+                logStmt.setString(3, "RESTORE");
+                if (restoredByUserId != null) {
+                    logStmt.setInt(4, restoredByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error restoring adopter: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Permanently deletes an adopter from the archive table
+     * @param adopterId ID of the adopter to permanently delete
+     * @param deletedByUserId ID of the user performing the permanent deletion
+     * @param reason Reason for permanent deletion
+     * @return true if permanent deletion was successful, false otherwise
+     */
+    public boolean permanentDeleteAdopter(int adopterId, Integer deletedByUserId, String reason) {
+        String deleteAdopterSql = "DELETE FROM tbl_adopter_archive WHERE adopter_id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Delete adopter from archive table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deleteAdopterSql)) {
+                deleteStmt.setInt(1, adopterId);
+                int rowsAffected = deleteStmt.executeUpdate();
+                
+                if (rowsAffected == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "tbl_adopter");
+                logStmt.setInt(2, adopterId);
+                logStmt.setString(3, "PERMANENT_DELETE");
+                if (deletedByUserId != null) {
+                    logStmt.setInt(4, deletedByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error permanently deleting adopter: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Gets all archived adopters
+     * @return List of archived adopters
+     */
+    public List<Adopter> getAllArchivedAdopters() {
+        List<Adopter> adopters = new ArrayList<>();
+        String sql = "SELECT * FROM tbl_adopter_archive ORDER BY archived_date DESC";
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                Adopter adopter = new Adopter();
+                adopter.setAdopterId(rs.getInt("adopter_id"));
+                // Note: username field stored separately in archive table
+                adopter.setAdopterName(rs.getString("adopter_name"));
+                adopter.setAdopterContact(rs.getString("adopter_contact"));
+                adopter.setAdopterEmail(rs.getString("adopter_email"));
+                adopter.setAdopterAddress(rs.getString("adopter_address"));
+                adopter.setAdopterProfile(rs.getString("adopter_profile"));
+                adopter.setAdopterUsername(rs.getString("adopter_username"));
+                adopter.setAdopterPassword(rs.getString("adopter_password"));
+                adopters.add(adopter);
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving archived adopters: " + e.getMessage());
+        }
+        
+        return adopters;
     }
 }

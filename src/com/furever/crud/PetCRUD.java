@@ -8,7 +8,6 @@ package com.furever.crud;
  *
  * @author jerimiahtongco
  */
-
 import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
@@ -660,5 +659,279 @@ public class PetCRUD {
         }
         
         return updatedCount;
+    }
+    
+    /**
+     * Archives a pet by moving it to the archive table and removing from main table
+     * Also archives associated pet media records
+     * @param petId ID of the pet to archive
+     * @param archivedByUserId ID of the user performing the archive operation
+     * @param reason Reason for archiving
+     * @return true if archiving was successful, false otherwise
+     */
+    public boolean archivePet(int petId, Integer archivedByUserId, String reason) {
+        String selectPetSql = "SELECT * FROM tbl_pet WHERE pet_id = ?";
+        String insertPetArchiveSql = "INSERT INTO tbl_pet_archive (pet_id, pet_owner_id, pet_name, pet_type_id, description, age, gender, health_status, upload_health_history, vaccination_status, proof_of_vaccination, adoption_status, date_registered, archived, archived_date, archived_by_user_id, archive_reason) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String deletePetSql = "DELETE FROM tbl_pet WHERE pet_id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Get the pet record to archive
+            Pet pet = null;
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectPetSql)) {
+                selectStmt.setInt(1, petId);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    if (rs.next()) {
+                        pet = extractPetFromResultSet(rs);
+                    }
+                }
+            }
+            
+            if (pet == null) {
+                conn.rollback();
+                return false;
+            }
+            
+            // Insert pet into archive table
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertPetArchiveSql)) {
+                insertStmt.setInt(1, pet.getPetId());
+                insertStmt.setInt(2, pet.getPetOwnerId());
+                insertStmt.setString(3, pet.getPetName());
+                insertStmt.setInt(4, pet.getPetTypeId());
+                insertStmt.setString(5, pet.getDescription());
+                insertStmt.setInt(6, pet.getAge());
+                insertStmt.setString(7, pet.getGender());
+                insertStmt.setString(8, pet.getHealthStatus());
+                insertStmt.setString(9, pet.getUploadHealthHistory());
+                insertStmt.setString(10, pet.getVaccinationStatus());
+                insertStmt.setString(11, pet.getProofOfVaccination());
+                insertStmt.setString(12, pet.getAdoptionStatus());
+                insertStmt.setDate(13, pet.getDateRegistered());
+                insertStmt.setBoolean(14, true);
+                insertStmt.setTimestamp(15, new java.sql.Timestamp(System.currentTimeMillis()));
+                if (archivedByUserId != null) {
+                    insertStmt.setInt(16, archivedByUserId);
+                } else {
+                    insertStmt.setNull(16, java.sql.Types.INTEGER);
+                }
+                insertStmt.setString(17, reason);
+                
+                insertStmt.executeUpdate();
+            }
+            
+            // Delete pet from main table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deletePetSql)) {
+                deleteStmt.setInt(1, petId);
+                deleteStmt.executeUpdate();
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "tbl_pet");
+                logStmt.setInt(2, petId);
+                logStmt.setString(3, "ARCHIVE");
+                if (archivedByUserId != null) {
+                    logStmt.setInt(4, archivedByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error archiving pet: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Restores a pet from archive back to the main table
+     * Also restores associated pet media records
+     * @param petId ID of the pet to restore
+     * @param restoredByUserId ID of the user performing the restore operation
+     * @param reason Reason for restoring
+     * @return true if restoration was successful, false otherwise
+     */
+    public boolean restorePet(int petId, Integer restoredByUserId, String reason) {
+        String selectPetArchiveSql = "SELECT * FROM tbl_pet_archive WHERE pet_id = ?";
+        String insertPetMainSql = "INSERT INTO tbl_pet (pet_id, pet_owner_id, pet_name, pet_type_id, description, age, gender, health_status, upload_health_history, vaccination_status, proof_of_vaccination, adoption_status, date_registered, archived, archived_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)";
+        String deletePetArchiveSql = "DELETE FROM tbl_pet_archive WHERE pet_id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Get the archived pet record
+            Pet pet = null;
+            try (PreparedStatement selectStmt = conn.prepareStatement(selectPetArchiveSql)) {
+                selectStmt.setInt(1, petId);
+                try (ResultSet rs = selectStmt.executeQuery()) {
+                    if (rs.next()) {
+                        pet = extractPetFromResultSet(rs);
+                    }
+                }
+            }
+            
+            if (pet == null) {
+                conn.rollback();
+                return false;
+            }
+            
+            // Insert pet back into main table
+            try (PreparedStatement insertStmt = conn.prepareStatement(insertPetMainSql)) {
+                insertStmt.setInt(1, pet.getPetId());
+                insertStmt.setInt(2, pet.getPetOwnerId());
+                insertStmt.setString(3, pet.getPetName());
+                insertStmt.setInt(4, pet.getPetTypeId());
+                insertStmt.setString(5, pet.getDescription());
+                insertStmt.setInt(6, pet.getAge());
+                insertStmt.setString(7, pet.getGender());
+                insertStmt.setString(8, pet.getHealthStatus());
+                insertStmt.setString(9, pet.getUploadHealthHistory());
+                insertStmt.setString(10, pet.getVaccinationStatus());
+                insertStmt.setString(11, pet.getProofOfVaccination());
+                insertStmt.setString(12, pet.getAdoptionStatus());
+                insertStmt.setDate(13, pet.getDateRegistered());
+                insertStmt.setBoolean(14, false);
+                insertStmt.setNull(15, java.sql.Types.TIMESTAMP);
+                
+                insertStmt.executeUpdate();
+            }
+            
+            // Delete pet from archive table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deletePetArchiveSql)) {
+                deleteStmt.setInt(1, petId);
+                deleteStmt.executeUpdate();
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "tbl_pet");
+                logStmt.setInt(2, petId);
+                logStmt.setString(3, "RESTORE");
+                if (restoredByUserId != null) {
+                    logStmt.setInt(4, restoredByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error restoring pet: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Permanently deletes a pet from the archive table
+     * Also permanently deletes associated pet media records
+     * @param petId ID of the pet to permanently delete
+     * @param deletedByUserId ID of the user performing the permanent delete operation
+     * @param reason Reason for permanent deletion
+     * @return true if permanent deletion was successful, false otherwise
+     */
+    public boolean permanentDeletePet(int petId, Integer deletedByUserId, String reason) {
+        String deletePetSql = "DELETE FROM tbl_pet_archive WHERE pet_id = ?";
+        String logSql = "INSERT INTO tbl_archive_log (table_name, record_id, operation, performed_by_user_id, reason) VALUES (?, ?, ?, ?, ?)";
+        
+        try (Connection conn = DbConnection.getConnection()) {
+            conn.setAutoCommit(false);
+            
+            // Delete pet from archive table
+            try (PreparedStatement deleteStmt = conn.prepareStatement(deletePetSql)) {
+                deleteStmt.setInt(1, petId);
+                int rowsAffected = deleteStmt.executeUpdate();
+                
+                if (rowsAffected == 0) {
+                    conn.rollback();
+                    return false;
+                }
+            }
+            
+            // Log the operation
+            try (PreparedStatement logStmt = conn.prepareStatement(logSql)) {
+                logStmt.setString(1, "tbl_pet");
+                logStmt.setInt(2, petId);
+                logStmt.setString(3, "PERMANENT_DELETE");
+                if (deletedByUserId != null) {
+                    logStmt.setInt(4, deletedByUserId);
+                } else {
+                    logStmt.setNull(4, java.sql.Types.INTEGER);
+                }
+                logStmt.setString(5, reason);
+                
+                logStmt.executeUpdate();
+            }
+            
+            conn.commit();
+            return true;
+            
+        } catch (SQLException e) {
+            System.err.println("Error permanently deleting pet: " + e.getMessage());
+            return false;
+        }
+    }
+    
+    /**
+     * Gets all archived pets
+     * @return List of archived pets
+     */
+    public List<Pet> getAllArchivedPets() {
+        String sql = "SELECT * FROM tbl_pet_archive ORDER BY archived_date DESC";
+        List<Pet> pets = new ArrayList<>();
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql);
+             ResultSet rs = pstmt.executeQuery()) {
+            
+            while (rs.next()) {
+                pets.add(extractPetFromResultSet(rs));
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving archived pets: " + e.getMessage());
+        }
+        
+        return pets;
+    }
+    
+    /**
+     * Gets archived pets by owner ID
+     * @param petOwnerId ID of the pet owner
+     * @return List of archived pets for the owner
+     */
+    public List<Pet> getArchivedPetsByOwner(int petOwnerId) {
+        String sql = "SELECT * FROM tbl_pet_archive WHERE pet_owner_id = ? ORDER BY archived_date DESC";
+        List<Pet> pets = new ArrayList<>();
+        
+        try (Connection conn = DbConnection.getConnection();
+             PreparedStatement pstmt = conn.prepareStatement(sql)) {
+            
+            pstmt.setInt(1, petOwnerId);
+            
+            try (ResultSet rs = pstmt.executeQuery()) {
+                while (rs.next()) {
+                    pets.add(extractPetFromResultSet(rs));
+                }
+            }
+            
+        } catch (SQLException e) {
+            System.err.println("Error retrieving archived pets by owner: " + e.getMessage());
+        }
+        
+        return pets;
     }
 }
