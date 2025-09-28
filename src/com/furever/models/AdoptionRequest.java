@@ -6,13 +6,11 @@ package com.furever.models;
 
 /**
  *
- * @author jerimiahtongco
+ * @author jerimiahtongco 
  */
 import java.sql.Date;
 
-/**
- * AdoptionRequest model class representing the tbl_adoption_request table
- */
+
 public class AdoptionRequest {
     private int adoptionRequestId;
     private int petId;

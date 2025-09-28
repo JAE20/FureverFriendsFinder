@@ -23,7 +23,9 @@ import com.furever.models.Adopter;
 /**
  * CRUD operations for Adopter entity
  */
+
 public class AdopterCRUD {
+    private static final String INDENT = "\t\t\t\t\t";
     
     /**
      * Creates a new adopter in the database
@@ -52,12 +54,12 @@ public class AdopterCRUD {
                         adopter.setAdopterId(generatedKeys.getInt(1));
                     }
                 }
-                System.out.println("Adopter created successfully with ID: " + adopter.getAdopterId());
+                System.out.println(INDENT + "Adopter created successfully with ID: " + adopter.getAdopterId());
                 return true;
             }
             
         } catch (SQLException e) {
-            System.err.println("Error creating adopter: " + e.getMessage());
+            System.err.println(INDENT + "Error creating adopter: " + e.getMessage());
         }
         
         return false;
@@ -83,7 +85,7 @@ public class AdopterCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adopter: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adopter: " + e.getMessage());
         }
         
         return null;
@@ -109,7 +111,7 @@ public class AdopterCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adopter by username: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adopter by username: " + e.getMessage());
         }
         
         return null;
@@ -139,7 +141,7 @@ public class AdopterCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error searching adopters by username: " + e.getMessage());
+            System.err.println(INDENT + "Error searching adopters by username: " + e.getMessage());
         }
         
         return adopters;
@@ -192,14 +194,14 @@ public class AdopterCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adopter updated successfully.");
+                System.out.println( "\tAdopter updated successfully.");
                 return true;
             } else {
-                System.out.println("No adopter found with ID: " + adopter.getAdopterId());
+                System.out.println( "No adopter found with ID: " + adopter.getAdopterId());
             }
             
         } catch (SQLException e) {
-            System.err.println("Error updating adopter: " + e.getMessage());
+            System.err.println( "Error updating adopter: " + e.getMessage());
         }
         
         return false;
@@ -221,7 +223,7 @@ public class AdopterCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adopter deleted successfully.");
+                System.out.println( "Adopter deleted successfully.");
                 return true;
             } else {
                 System.out.println("No adopter found with ID: " + adopterId);
@@ -255,7 +257,7 @@ public class AdopterCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error searching adopters: " + e.getMessage());
+            System.err.println(INDENT + "Error searching adopters: " + e.getMessage());
         }
         
         return adopters;
@@ -277,7 +279,7 @@ public class AdopterCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error counting adopters: " + e.getMessage());
+            System.err.println(INDENT + "Error counting adopters: " + e.getMessage());
         }
         
         return 0;
@@ -328,12 +330,12 @@ public class AdopterCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adopter profile created successfully for user: " + username);
+                System.out.println(INDENT + "Adopter profile created successfully for user: " + username);
                 return true;
             }
             
         } catch (SQLException e) {
-            System.err.println("Error creating adopter profile for user: " + e.getMessage());
+            System.err.println(INDENT + "Error creating adopter profile for user: " + e.getMessage());
         }
         
         return false;
@@ -359,7 +361,7 @@ public class AdopterCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adopter by linked username: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adopter by linked username: " + e.getMessage());
         }
         
         return null;

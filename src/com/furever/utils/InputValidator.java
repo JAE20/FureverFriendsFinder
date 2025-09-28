@@ -11,51 +11,48 @@ package com.furever.utils;
 import java.util.Scanner;
 import java.util.regex.Pattern;
 
-/**
- * Utility class for input validation and exception handling
- */
 public class InputValidator {
+
+    private static final String INDENT = "\t\t\t\t\t";
+    private static final String INDENT1 = "\t\t\t";
     
+    public static final String RESET = "\u001B[0m";
+    
+    public static final String RED = "\u001B[31m";
+    public static final String GREEN = "\u001B[32m";
+    public static final String YELLOW = "\u001B[33m";
+    public static final String BLUE = "\u001B[34m";
+    public static final String PURPLE = "\u001B[35m"; // Used for Headers
+    public static final String CYAN = "\u001B[36m";
+
+    // Text Styles (Can be combined with colors, e.g., BOLD + PURPLE)
+    public static final String BOLD = "\u001B[1m";
     private static final Scanner scanner = new Scanner(System.in);
-    
-    // Email pattern for validation
+
     private static final Pattern EMAIL_PATTERN = Pattern.compile(
-        "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
+            "^[a-zA-Z0-9_+&*-]+(?:\\.[a-zA-Z0-9_+&*-]+)*@(?:[a-zA-Z0-9-]+\\.)+[a-zA-Z]{2,7}$"
     );
-    
-    // Phone pattern for validation (Philippine mobile numbers)
+
     private static final Pattern PHONE_PATTERN = Pattern.compile("^09\\d{9}$");
-    
-    /**
-     * Gets integer input with validation
-     * @param prompt Message to display to user
-     * @param min Minimum allowed value
-     * @param max Maximum allowed value
-     * @return Valid integer input
-     */
+
     public static int getIntInput(String prompt, int min, int max) {
         int input;
         while (true) {
             try {
                 System.out.print(prompt);
                 input = Integer.parseInt(scanner.nextLine().trim());
-                
+
                 if (input >= min && input <= max) {
                     return input;
                 } else {
-                    System.out.println("Please enter a number between " + min + " and " + max + ".");
+                    System.out.println(INDENT + "Please enter a number between " + min + " and " + max + ".");
                 }
             } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a valid number.");
+                System.out.println(INDENT + "Invalid input. Please enter a valid number.");
             }
         }
     }
-    
-    /**
-     * Gets integer input with validation (no range restriction)
-     * @param prompt Message to display to user
-     * @return Valid integer input
-     */
+
     public static int getIntInput(String prompt) {
         int input;
         while (true) {
@@ -64,73 +61,56 @@ public class InputValidator {
                 input = Integer.parseInt(scanner.nextLine().trim());
                 return input;
             } catch (NumberFormatException e) {
-                System.out.println("Invalid input. Please enter a valid number.");
+                System.out.println(INDENT + "Invalid input. Please enter a valid number.");
             }
         }
     }
-    
-    /**
-     * Gets string input with validation
-     * @param prompt Message to display to user
-     * @param allowEmpty Whether empty strings are allowed
-     * @return Valid string input
-     */
+
     public static String getStringInput(String prompt, boolean allowEmpty) {
         String input;
         while (true) {
             System.out.print(prompt);
             input = scanner.nextLine().trim();
-            
+
             if (!input.isEmpty() || allowEmpty) {
                 return input;
             } else {
-                System.out.println("Input cannot be empty. Please try again.");
+                System.out.println(INDENT + "Input cannot be empty. Please try again.");
             }
         }
     }
-    
-    /**
-     * Gets string input with length validation
-     * @param prompt Message to display to user
-     * @param minLength Minimum length required
-     * @param maxLength Maximum length allowed
-     * @return Valid string input
-     */
+
     public static String getStringInput(String prompt, int minLength, int maxLength) {
         String input;
         while (true) {
             System.out.print(prompt);
             input = scanner.nextLine().trim();
-            
+
             if (input.length() >= minLength && input.length() <= maxLength) {
                 return input;
             } else {
-                System.out.println("Input must be between " + minLength + " and " + maxLength + " characters.");
+                System.out.println(INDENT + "Input must be between " + minLength + " and " + maxLength + " characters.");
             }
         }
     }
-    
-    /**
-     * Gets email input with validation
-     * @param prompt Message to display to user
-     * @return Valid email input
-     */
+
     public static String getEmailInput(String prompt) {
         String input;
         while (true) {
             System.out.print(prompt);
             input = scanner.nextLine().trim();
-            
+
             if (EMAIL_PATTERN.matcher(input).matches()) {
                 return input;
             } else {
-                System.out.println("Invalid email format. Please enter a valid email address.");
+                System.out.println(INDENT + "Invalid email format. Please enter a valid email address.");
             }
         }
     }
-    
+
     /**
      * Gets phone number input with validation
+     *
      * @param prompt Message to display to user
      * @return Valid phone number input
      */
@@ -139,38 +119,32 @@ public class InputValidator {
         while (true) {
             System.out.print(prompt);
             input = scanner.nextLine().trim();
-            
+
             if (PHONE_PATTERN.matcher(input).matches()) {
                 return input;
             } else {
-                System.out.println("Invalid phone format. Please enter a valid Philippine mobile number (09xxxxxxxxx).");
+                System.out.println(INDENT + "Invalid phone format. Please enter a valid Philippine mobile number (09xxxxxxxxx).");
             }
         }
     }
-    
-    /**
-     * Gets choice input for menu options
-     * @param prompt Message to display to user
-     * @param validChoices Array of valid choice characters
-     * @return Valid choice character
-     */
+
     public static char getChoiceInput(String prompt, char[] validChoices) {
         char input;
         while (true) {
             System.out.print(prompt);
             String inputStr = scanner.nextLine().trim().toLowerCase();
-            
+
             if (inputStr.length() == 1) {
                 input = inputStr.charAt(0);
-                
+
                 for (char validChoice : validChoices) {
                     if (Character.toLowerCase(validChoice) == input) {
                         return input;
                     }
                 }
             }
-            
-            System.out.print("Invalid choice. Valid options are: ");
+
+            System.out.print(INDENT + "Invalid choice. Valid options are: ");
             for (int i = 0; i < validChoices.length; i++) {
                 System.out.print(validChoices[i]);
                 if (i < validChoices.length - 1) {
@@ -180,50 +154,40 @@ public class InputValidator {
             System.out.println();
         }
     }
-    
-    /**
-     * Gets confirmation input (Y/N)
-     * @param prompt Message to display to user
-     * @return true for yes, false for no
-     */
+
     public static boolean getConfirmation(String prompt) {
         char choice = getChoiceInput(prompt + " (Y/N): ", new char[]{'y', 'n'});
         return choice == 'y';
     }
-    
-    /**
-     * Validates and formats date input
-     * @param prompt Message to display to user
-     * @return Valid date string in YYYY-MM-DD format
-     */
+
     public static String getDateInput(String prompt) {
         String input;
         while (true) {
             System.out.print(prompt + " (YYYY-MM-DD): ");
             input = scanner.nextLine().trim();
-            
+
             // Basic date format validation
             if (input.matches("\\d{4}-\\d{2}-\\d{2}")) {
                 try {
                     java.sql.Date.valueOf(input); // This will throw exception if invalid date
                     return input;
                 } catch (IllegalArgumentException e) {
-                    System.out.println("Invalid date. Please enter a valid date in YYYY-MM-DD format.");
+                    System.out.println(INDENT + "Invalid date. Please enter a valid date in YYYY-MM-DD format.");
                 }
             } else {
-                System.out.println("Invalid date format. Please use YYYY-MM-DD format.");
+                System.out.println(INDENT + "Invalid date format. Please use YYYY-MM-DD format.");
             }
         }
     }
-    
+
     /**
      * Waits for user to press Enter to continue
      */
     public static void waitForEnter() {
-        System.out.print("Press Enter to continue...");
+        System.out.print(INDENT + "Press Enter to continue...");
         scanner.nextLine();
     }
-    
+
     /**
      * Clears the console (works on most terminals)
      */
@@ -243,19 +207,21 @@ public class InputValidator {
             }
         }
     }
-    
+
     /**
      * Displays a formatted header
+     *
      * @param title Header title
      */
     public static void displayHeader(String title) {
-        System.out.println("\n" + "=".repeat(60));
-        System.out.println(centerText(title, 60));
-        System.out.println("=".repeat(60));
+        System.out.println(INDENT + "=".repeat(65));
+        System.out.println(centerText(title, 65));
+        System.out.println(INDENT + "=".repeat(65));
     }
-    
+
     /**
      * Centers text within a given width
+     *
      * @param text Text to center
      * @param width Total width
      * @return Centered text
@@ -264,32 +230,20 @@ public class InputValidator {
         if (text.length() >= width) {
             return text;
         }
-        
+
         int padding = (width - text.length()) / 2;
         return " ".repeat(padding) + text + " ".repeat(width - text.length() - padding);
     }
-    
-    /**
-     * Displays error message in a formatted way
-     * @param message Error message to display
-     */
+
     public static void displayError(String message) {
-        System.out.println("\n❌ ERROR: " + message + "\n");
+        System.out.println(InputValidator.RED + INDENT + "ERROR: " + message + "\n" + InputValidator.RESET);
     }
-    
-    /**
-     * Displays success message in a formatted way
-     * @param message Success message to display
-     */
+
     public static void displaySuccess(String message) {
-        System.out.println("\n✅ SUCCESS: " + message + "\n");
+        System.out.println(InputValidator.GREEN + INDENT + "SUCCESS: " + message + "\n" + InputValidator.RESET);
     }
-    
-    /**
-     * Displays warning message in a formatted way
-     * @param message Warning message to display
-     */
+
     public static void displayWarning(String message) {
-        System.out.println("\n⚠️ WARNING: " + message + "\n");
+        System.out.println(InputValidator.YELLOW + INDENT + "WARNING: " + message + "\n" + InputValidator.RESET);
     }
 }

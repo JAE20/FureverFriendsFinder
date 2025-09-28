@@ -6,7 +6,8 @@ package com.furever.crud;
 
 /**
  *
- * @author jerimiahtongco
+ * @author jerimiahtongco 
+
  */
 
 import java.sql.Connection;
@@ -24,7 +25,7 @@ import com.furever.models.Pet;
  * CRUD operations for Pet entity
  */
 public class PetCRUD {
-    
+    private static final String INDENT = "\t\t\t\t\t";
     /**
      * Creates a new pet in the database
      * @param pet Pet object to create
@@ -62,12 +63,12 @@ public class PetCRUD {
                         pet.setDateRegistered(currentDate);
                     }
                 }
-                System.out.println("Pet created successfully with ID: " + pet.getPetId());
+                System.out.println(INDENT + "Pet created successfully with ID: " + pet.getPetId());
                 return true;
             }
             
         } catch (SQLException e) {
-            System.err.println("Error creating pet: " + e.getMessage());
+            System.err.println(INDENT + "Error creating pet: " + e.getMessage());
         }
         
         return false;
@@ -93,7 +94,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving pet: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving pet: " + e.getMessage());
         }
         
         return null;
@@ -116,7 +117,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving all pets: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving all pets: " + e.getMessage());
         }
         
         return pets;
@@ -170,7 +171,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving pets by type: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving pets by type: " + e.getMessage());
         }
         
         return pets;
@@ -197,7 +198,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving pets by owner: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving pets by owner: " + e.getMessage());
         }
         
         return pets;
@@ -271,7 +272,7 @@ public class PetCRUD {
         
         return false;
     }
-    
+   
     /**
      * Searches pets by name
      * @param searchTerm Search term to match against pet names
@@ -293,7 +294,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error searching pets: " + e.getMessage());
+            System.err.println(INDENT + "Error searching pets: " + e.getMessage());
         }
         
         return pets;
@@ -315,7 +316,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error counting pets: " + e.getMessage());
+            System.err.println(INDENT + "Error counting pets: " + e.getMessage());
         }
         
         return 0;
@@ -341,7 +342,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error counting pets by status: " + e.getMessage());
+            System.err.println(INDENT + "Error counting pets by status: " + e.getMessage());
         }
         
         return 0;
@@ -377,7 +378,7 @@ public class PetCRUD {
      * @return true if pet was archived successfully, false otherwise
      */
     public boolean archivePet(int petId) {
-        String sql = "UPDATE tbl_pet SET archived = true, archived_date = NOW() WHERE pet_id = ? AND archived = false";
+        String sql = "UPDATE tbl_pet SET archived = 1 WHERE pet_id = ?";
         
         try (Connection conn = DbConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -387,14 +388,14 @@ public class PetCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Pet archived successfully.");
+                System.out.println(INDENT + "Pet archived successfully.");
                 return true;
             } else {
-                System.out.println("No active pet found with ID: " + petId);
+                System.out.println(INDENT + "No active pet found with ID: " + petId);
             }
             
         } catch (SQLException e) {
-            System.err.println("Error archiving pet: " + e.getMessage());
+            System.err.println(INDENT + "Error archiving pet: " + e.getMessage());
         }
         
         return false;
@@ -406,7 +407,7 @@ public class PetCRUD {
      * @return true if pet was restored successfully, false otherwise
      */
     public boolean restorePet(int petId) {
-        String sql = "UPDATE tbl_pet SET archived = false, archived_date = NULL WHERE pet_id = ? AND archived = true";
+        String sql = "UPDATE tbl_pet SET archived = 0 WHERE pet_id = ?";
         
         try (Connection conn = DbConnection.getConnection();
              PreparedStatement pstmt = conn.prepareStatement(sql)) {
@@ -416,14 +417,14 @@ public class PetCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Pet restored successfully.");
+                System.out.println(INDENT + "Pet restored successfully.");
                 return true;
             } else {
-                System.out.println("No archived pet found with ID: " + petId);
+                System.out.println(INDENT + "No archived pet found with ID: " + petId);
             }
             
         } catch (SQLException e) {
-            System.err.println("Error restoring pet: " + e.getMessage());
+            System.err.println(INDENT + "Error restoring pet: " + e.getMessage());
         }
         
         return false;
@@ -446,7 +447,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving archived pets: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving archived pets: " + e.getMessage());
         }
         
         return pets;
@@ -469,7 +470,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving active pets: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving active pets: " + e.getMessage());
         }
         
         return pets;
@@ -481,7 +482,7 @@ public class PetCRUD {
      */
     public void displayPetsTable(List<Pet> pets) {
         if (pets.isEmpty()) {
-            System.out.println("No pets found.");
+            System.out.println(INDENT + "No pets found.");
             return;
         }
         
@@ -526,27 +527,27 @@ public class PetCRUD {
     public void displayPetDetails(int petId) {
         Pet pet = getPetById(petId);
         if (pet == null) {
-            System.out.println("Pet not found with ID: " + petId);
+            System.out.println(INDENT + "Pet not found with ID: " + petId);
             return;
         }
         
-        System.out.println("\n" + "=".repeat(80));
-        System.out.println("                        PET DETAILED INFORMATION");
-        System.out.println("=".repeat(80));
-        System.out.printf("%-25s: %s%n", "Pet ID", pet.getPetId());
-        System.out.printf("%-25s: %s%n", "Pet Name", pet.getPetName());
-        System.out.printf("%-25s: %s%n", "Pet Type ID", pet.getPetTypeId());
-        System.out.printf("%-25s: %s%n", "Pet Owner ID", pet.getPetOwnerId());
-        System.out.printf("%-25s: %s%n", "Description", pet.getDescription());
-        System.out.printf("%-25s: %d years%n", "Age", pet.getAge());
-        System.out.printf("%-25s: %s%n", "Gender", pet.getGender());
-        System.out.printf("%-25s: %s%n", "Health Status", pet.getHealthStatus());
-        System.out.printf("%-25s: %s%n", "Health History", pet.getUploadHealthHistory());
-        System.out.printf("%-25s: %s%n", "Vaccination Status", pet.getVaccinationStatus());
-        System.out.printf("%-25s: %s%n", "Vaccination Proof", pet.getProofOfVaccination());
-        System.out.printf("%-25s: %s%n", "Adoption Status", pet.getAdoptionStatus());
-        System.out.printf("%-25s: %s%n", "Date Registered", pet.getDateRegistered());
-        System.out.println("=".repeat(80));
+        System.out.println(INDENT + "\n" + "=".repeat(80));
+        System.out.println(INDENT + "                        PET DETAILED INFORMATION");
+        System.out.println(INDENT + "=".repeat(80));
+        System.out.printf(INDENT + "%-25s: %s%n", "Pet ID", pet.getPetId());
+        System.out.printf(INDENT + "%-25s: %s%n", "Pet Name", pet.getPetName());
+        System.out.printf(INDENT + "%-25s: %s%n", "Pet Type ID", pet.getPetTypeId());
+        System.out.printf(INDENT + "%-25s: %s%n", "Pet Owner ID", pet.getPetOwnerId());
+        System.out.printf(INDENT + "%-25s: %s%n", "Description", pet.getDescription());
+        System.out.printf(INDENT + "%-25s: %d years%n", "Age", pet.getAge());
+        System.out.printf(INDENT + "%-25s: %s%n", "Gender", pet.getGender());
+        System.out.printf(INDENT + "%-25s: %s%n", "Health Status", pet.getHealthStatus());
+        System.out.printf(INDENT + "%-25s: %s%n", "Health History", pet.getUploadHealthHistory());
+        System.out.printf(INDENT + "%-25s: %s%n", "Vaccination Status", pet.getVaccinationStatus());
+        System.out.printf(INDENT + "%-25s: %s%n", "Vaccination Proof", pet.getProofOfVaccination());
+        System.out.printf(INDENT + "%-25s: %s%n", "Adoption Status", pet.getAdoptionStatus());
+        System.out.printf(INDENT + "%-25s: %s%n", "Date Registered", pet.getDateRegistered());
+        System.out.println(INDENT + "=".repeat(80));
     }
     
     // Enhanced Update Methods for better functionality
@@ -574,7 +575,7 @@ public class PetCRUD {
             return rowsAffected > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error updating pet basic info: " + e.getMessage());
+            System.err.println(INDENT + "Error updating pet basic info: " + e.getMessage());
             return false;
         }
     }
@@ -600,7 +601,7 @@ public class PetCRUD {
             return rowsAffected > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error updating pet health info: " + e.getMessage());
+            System.err.println(INDENT + "Error updating pet health info: " + e.getMessage());
             return false;
         }
     }
@@ -624,17 +625,11 @@ public class PetCRUD {
             return rowsAffected > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error updating pet adoption status: " + e.getMessage());
+            System.err.println(INDENT + "Error updating pet adoption status: " + e.getMessage());
             return false;
         }
     }
     
-    /**
-     * Batch update multiple pets' adoption status
-     * @param petIds List of pet IDs to update
-     * @param adoptionStatus New adoption status for all pets
-     * @return number of pets successfully updated
-     */
     public int batchUpdateAdoptionStatus(List<Integer> petIds, String adoptionStatus) {
         String sql = "UPDATE tbl_pet SET adoption_status = ? WHERE pet_id = ? AND archived = FALSE";
         int updatedCount = 0;
@@ -656,7 +651,7 @@ public class PetCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error in batch update adoption status: " + e.getMessage());
+            System.err.println(INDENT +      "Error in batch update adoption status: " + e.getMessage());
         }
         
         return updatedCount;

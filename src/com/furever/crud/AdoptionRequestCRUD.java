@@ -4,10 +4,7 @@
  */
 package com.furever.crud;
 
-/**
- *
- * @author jerimiahtongco
- */
+
 import java.sql.Connection;
 import java.sql.Date;
 import java.sql.PreparedStatement;
@@ -22,10 +19,10 @@ import com.furever.database.DbConnection;
 import com.furever.models.AdoptionRequest;
 
 /**
- * CRUD operations for AdoptionRequest entity
+ * CRUD operations for AdoptionRequest entity 
  */
 public class AdoptionRequestCRUD {
-    
+    private static final String INDENT = "\t\t\t\t\t";
     /**
      * Creates a new adoption request in the database
      * @param adoptionRequest AdoptionRequest object to create
@@ -57,12 +54,12 @@ public class AdoptionRequestCRUD {
                         adoptionRequest.setAdoptionRequestId(generatedKeys.getInt(1));
                     }
                 }
-                System.out.println("Adoption request created successfully with ID: " + adoptionRequest.getAdoptionRequestId());
+                System.out.println(INDENT + "Adoption request created successfully with ID: " + adoptionRequest.getAdoptionRequestId());
                 return true;
             }
             
         } catch (SQLException e) {
-            System.err.println("Error creating adoption request: " + e.getMessage());
+            System.err.println(INDENT + "Error creating adoption request: " + e.getMessage());
         }
         
         return false;
@@ -88,7 +85,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adoption request: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adoption request: " + e.getMessage());
         }
         
         return null;
@@ -111,7 +108,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving all adoption requests: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving all adoption requests: " + e.getMessage());
         }
         
         return requests;
@@ -138,7 +135,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adoption requests by status: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adoption requests by status: " + e.getMessage());
         }
         
         return requests;
@@ -165,7 +162,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adoption requests by adopter: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adoption requests by adopter: " + e.getMessage());
         }
         
         return requests;
@@ -192,7 +189,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving adoption requests by pet: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving adoption requests by pet: " + e.getMessage());
         }
         
         return requests;
@@ -225,14 +222,14 @@ public class AdoptionRequestCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adoption request updated successfully.");
+                System.out.println(INDENT + "Adoption request updated successfully.");
                 return true;
             } else {
-                System.out.println("No adoption request found with ID: " + adoptionRequest.getAdoptionRequestId());
+                System.out.println(INDENT + "No adoption request found with ID: " + adoptionRequest.getAdoptionRequestId());
             }
             
         } catch (SQLException e) {
-            System.err.println("Error updating adoption request: " + e.getMessage());
+            System.err.println(INDENT + "Error updating adoption request: " + e.getMessage());
         }
         
         return false;
@@ -260,7 +257,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error checking for existing approved requests: " + e.getMessage());
+            System.err.println(INDENT + "Error checking for existing approved requests: " + e.getMessage());
         }
         
         return false;
@@ -277,15 +274,15 @@ public class AdoptionRequestCRUD {
         // First, get the adoption request details
         AdoptionRequest request = getAdoptionRequestById(requestId);
         if (request == null) {
-            System.out.println("❌ ERROR: Adoption request not found.");
+            System.out.println(INDENT + "❌ ERROR: Adoption request not found.");
             return false;
         }
         
         // Check if adopter already has an approved request for this pet
         if (hasApprovedRequestForPet(request.getAdopterId(), request.getPetId())) {
-            System.out.println("❌ ERROR: This adopter already has an approved request for this pet.");
-            System.out.println("   Only one approved request per adopter per pet is allowed.");
-            System.out.println("   Please reject the existing approved request first if needed.");
+            System.out.println(INDENT + "❌ ERROR: This adopter already has an approved request for this pet.");
+            System.out.println(INDENT + "   Only one approved request per adopter per pet is allowed.");
+            System.out.println(INDENT + "   Please reject the existing approved request first if needed.");
             return false;
         }
         
@@ -313,14 +310,14 @@ public class AdoptionRequestCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adoption request approved successfully.");
+                System.out.println(INDENT + "Adoption request approved successfully.");
                 return true;
             } else {
-                System.out.println("No adoption request found with ID: " + requestId);
+                System.out.println(INDENT + "No adoption request found with ID: " + requestId);
             }
             
         } catch (SQLException e) {
-            System.err.println("Error approving adoption request: " + e.getMessage());
+            System.err.println(INDENT + "Error approving adoption request: " + e.getMessage());
         }
         
         return false;
@@ -344,14 +341,14 @@ public class AdoptionRequestCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adoption request rejected successfully.");
+                System.out.println(INDENT + "Adoption request rejected successfully.");
                 return true;
             } else {
-                System.out.println("No adoption request found with ID: " + requestId);
+                System.out.println(INDENT + "No adoption request found with ID: " + requestId);
             }
             
         } catch (SQLException e) {
-            System.err.println("Error rejecting adoption request: " + e.getMessage());
+            System.err.println(INDENT +"Error rejecting adoption request: " + e.getMessage());
         }
         
         return false;
@@ -373,14 +370,14 @@ public class AdoptionRequestCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("Adoption request deleted successfully.");
+                System.out.println(INDENT + "Adoption request deleted successfully.");
                 return true;
             } else {
-                System.out.println("No adoption request found with ID: " + requestId);
+                System.out.println(INDENT + "No adoption request found with ID: " + requestId);
             }
             
         } catch (SQLException e) {
-            System.err.println("Error deleting adoption request: " + e.getMessage());
+            System.err.println(INDENT + "Error deleting adoption request: " + e.getMessage());
         }
         
         return false;
@@ -402,7 +399,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error counting adoption requests: " + e.getMessage());
+            System.err.println(INDENT + "Error counting adoption requests: " + e.getMessage());
         }
         
         return 0;
@@ -428,7 +425,7 @@ public class AdoptionRequestCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error counting adoption requests by status: " + e.getMessage());
+            System.err.println(INDENT + "Error counting adoption requests by status: " + e.getMessage());
         }
         
         return 0;
@@ -455,6 +452,6 @@ public class AdoptionRequestCRUD {
             request.setUserId(userId);
         }
         
-        return request;
+        return request; 
     }
 }

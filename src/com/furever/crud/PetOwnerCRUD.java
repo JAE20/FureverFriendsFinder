@@ -23,7 +23,7 @@ import com.furever.models.PetOwner;
  * CRUD operations for PetOwner entity
  */
 public class PetOwnerCRUD {
-    
+    private static final String INDENT = "\t\t\t\t\t";
     /**
      * Creates a new pet owner in the database
      */
@@ -47,7 +47,7 @@ public class PetOwnerCRUD {
             return pstmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error creating pet owner: " + e.getMessage());
+            System.err.println(INDENT + "Error creating pet owner: " + e.getMessage());
             return false;
         }
     }
@@ -69,7 +69,7 @@ public class PetOwnerCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving pet owner by ID: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving pet owner by ID: " + e.getMessage());
         }
         
         return null;
@@ -93,7 +93,7 @@ public class PetOwnerCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving pet owner by username: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving pet owner by username: " + e.getMessage());
         }
         
         return null;
@@ -115,7 +115,7 @@ public class PetOwnerCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving all pet owners: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving all pet owners: " + e.getMessage());
         }
         
         return petOwners;
@@ -142,7 +142,7 @@ public class PetOwnerCRUD {
             return pstmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error updating pet owner: " + e.getMessage());
+            System.err.println(INDENT + "Error updating pet owner: " + e.getMessage());
             return false;
         }
     }
@@ -160,7 +160,7 @@ public class PetOwnerCRUD {
             return pstmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error deleting pet owner: " + e.getMessage());
+            System.err.println(INDENT + "Error deleting pet owner: " + e.getMessage());
             return false;
         }
     }
@@ -183,7 +183,7 @@ public class PetOwnerCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error searching pet owners by name: " + e.getMessage());
+            System.err.println(INDENT + "Error searching pet owners by name: " + e.getMessage());
         }
         
         return petOwners;
@@ -204,7 +204,7 @@ public class PetOwnerCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error getting pet owner count: " + e.getMessage());
+            System.err.println(INDENT + "Error getting pet owner count: " + e.getMessage());
         }
         
         return 0;
@@ -228,7 +228,7 @@ public class PetOwnerCRUD {
             return pstmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error creating pet owner profile for user: " + e.getMessage());
+            System.err.println(INDENT + "Error creating pet owner profile for user: " + e.getMessage());
             return false;
         }
     }
@@ -248,7 +248,7 @@ public class PetOwnerCRUD {
             return pstmt.executeUpdate() > 0;
             
         } catch (SQLException e) {
-            System.err.println("Error updating pet owner username: " + e.getMessage());
+            System.err.println(INDENT + "Error updating pet owner username: " + e.getMessage());
             return false;
         }
     }
@@ -271,7 +271,7 @@ public class PetOwnerCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error checking pet owner profile existence: " + e.getMessage());
+            System.err.println(INDENT + "Error checking pet owner profile existence: " + e.getMessage());
         }
         
         return false;

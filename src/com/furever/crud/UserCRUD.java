@@ -6,7 +6,7 @@ package com.furever.crud;
 
 /**
  *
- * @author jerimiahtongco
+ * @author jerimiahtongco   
  */
 import java.sql.Connection;
 import java.sql.PreparedStatement;
@@ -19,16 +19,11 @@ import java.util.List;
 import com.furever.database.DbConnection;
 import com.furever.models.User;
 
-/**
- * CRUD operations for User entity
- */
+
 public class UserCRUD {
+    private static final String INDENT = "\t\t\t\t\t";
+
     
-    /**
-     * Creates a new user in the database and automatically creates corresponding profile
-     * @param user User object to create
-     * @return true if user was created successfully, false otherwise
-     */
     public boolean createUser(User user) {
         String sql = "INSERT INTO users (username, email, password, role) VALUES (?, ?, ?, ?)";
         
@@ -59,19 +54,19 @@ public class UserCRUD {
                 if ("adopter".equals(user.getRole())) {
                     profileCreated = createAdopterProfile(conn, user);
                 } else if ("pet_owner".equals(user.getRole())) {
-                    profileCreated = createPetOwnerProfile(conn, user);
+                    profileCreated = createPetOwnerProfile(conn, user); 
                 }
                 
                 if (profileCreated) {
                     conn.commit(); // Commit transaction
-                    System.out.println("User created successfully with ID: " + user.getId());
+                    System.out.println(INDENT + "User created successfully with ID: " + user.getId());
                     if (!"admin".equals(user.getRole())) {
-                        System.out.println("Corresponding " + user.getRole() + " profile created automatically.");
+                        System.out.println(INDENT + "Corresponding " + user.getRole() + " profile created automatically.");
                     }
                     return true;
                 } else {
                     conn.rollback(); // Rollback if profile creation failed
-                    System.err.println("User creation rolled back due to profile creation failure.");
+                    System.err.println(INDENT + "User creation rolled back due to profile creation failure.");
                 }
             }
             
@@ -81,9 +76,9 @@ public class UserCRUD {
                     conn.rollback();
                 }
             } catch (SQLException rollbackEx) {
-                System.err.println("Error during rollback: " + rollbackEx.getMessage());
+                System.err.println(INDENT + "Error during rollback: " + rollbackEx.getMessage());
             }
-            System.err.println("Error creating user: " + e.getMessage());
+            System.err.println(INDENT + "Error creating user: " + e.getMessage());
         } finally {
             try {
                 if (generatedKeys != null) generatedKeys.close();
@@ -93,19 +88,14 @@ public class UserCRUD {
                     conn.close();
                 }
             } catch (SQLException closeEx) {
-                System.err.println("Error closing resources: " + closeEx.getMessage());
+                System.err.println(INDENT + "Error closing resources: " + closeEx.getMessage());
             }
         }
         
         return false;
     }
     
-    /**
-     * Creates an adopter profile for a user
-     * @param conn Database connection (should be in transaction)
-     * @param user User for whom to create adopter profile
-     * @return true if profile was created successfully, false otherwise
-     */
+
     private boolean createAdopterProfile(Connection conn, User user) throws SQLException {
         String sql = "INSERT INTO tbl_adopter (username, adopter_name, adopter_contact, adopter_email, adopter_address, adopter_username, adopter_password) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
@@ -123,12 +113,7 @@ public class UserCRUD {
         }
     }
     
-    /**
-     * Creates a pet owner profile for a user
-     * @param conn Database connection (should be in transaction)
-     * @param user User for whom to create pet owner profile
-     * @return true if profile was created successfully, false otherwise
-     */
+
     private boolean createPetOwnerProfile(Connection conn, User user) throws SQLException {
         String sql = "INSERT INTO tbl_pet_owner (username, pet_owner_name, pet_owner_contact, pet_owner_email, pet_owner_address, pet_owner_username, pet_owner_password) VALUES (?, ?, ?, ?, ?, ?, ?)";
         
@@ -166,7 +151,7 @@ public class UserCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving user: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving user: " + e.getMessage());
         }
         
         return null;
@@ -192,7 +177,7 @@ public class UserCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving user by username: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving user by username: " + e.getMessage());
         }
         
         return null;
@@ -220,7 +205,7 @@ public class UserCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error searching users by username: " + e.getMessage());
+            System.err.println(INDENT + "Error searching users by username: " + e.getMessage());
         }
         
         return users;
@@ -243,7 +228,7 @@ public class UserCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error retrieving all users: " + e.getMessage());
+            System.err.println(INDENT + "Error retrieving all users: " + e.getMessage());
         }
         
         return users;
@@ -285,7 +270,7 @@ public class UserCRUD {
                 
                 // Handle role changes
                 if (!currentUser.getRole().equals(user.getRole())) {
-                    System.out.println("Role changed from " + currentUser.getRole() + " to " + user.getRole());
+                    System.out.println(INDENT + "Role changed from " + currentUser.getRole() + " to " + user.getRole());
                     
                     // Archive old profile if role changed away from adopter/pet_owner
                     if ("adopter".equals(currentUser.getRole()) && !"adopter".equals(user.getRole())) {
@@ -313,14 +298,14 @@ public class UserCRUD {
                 
                 if (profileHandled) {
                     conn.commit(); // Commit transaction
-                    System.out.println("User updated successfully.");
+                    System.out.println(INDENT + "User updated successfully.");
                     return true;
                 } else {
-                    conn.rollback(); // Rollback if profile handling failed
-                    System.err.println("User update rolled back due to profile handling failure.");
+                    conn.rollback(); 
+                    System.err.println(INDENT + "User update rolled back due to profile handling failure.");
                 }
             } else {
-                System.out.println("No user found with ID: " + user.getId());
+                System.out.println(INDENT + "No user found with ID: " + user.getId());
             }
             
         } catch (SQLException e) {
@@ -329,9 +314,9 @@ public class UserCRUD {
                     conn.rollback();
                 }
             } catch (SQLException rollbackEx) {
-                System.err.println("Error during rollback: " + rollbackEx.getMessage());
+                System.err.println(INDENT + "Error during rollback: " + rollbackEx.getMessage());
             }
-            System.err.println("Error updating user: " + e.getMessage());
+            System.err.println(INDENT + "Error updating user: " + e.getMessage());
         } finally {
             try {
                 if (pstmt != null) pstmt.close();
@@ -340,53 +325,35 @@ public class UserCRUD {
                     conn.close();
                 }
             } catch (SQLException closeEx) {
-                System.err.println("Error closing resources: " + closeEx.getMessage());
+                System.err.println(INDENT + "Error closing resources: " + closeEx.getMessage());
             }
         }
         
         return false;
     }
     
-    /**
-     * Archives an adopter profile (sets archived flag)
-     * @param conn Database connection (should be in transaction)
-     * @param username Username of the adopter to archive
-     * @return true if profile was archived successfully, false otherwise
-     */
     private boolean archiveAdopterProfile(Connection conn, String username) throws SQLException {
         String sql = "UPDATE tbl_adopter SET archived = 1, archived_date = NOW() WHERE username = ?";
         
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.executeUpdate();
-            System.out.println("Adopter profile archived for username: " + username);
+            System.out.println(INDENT + "Adopter profile archived for username: " + username);
             return true;
         }
     }
     
-    /**
-     * Archives a pet owner profile (sets archived flag)
-     * @param conn Database connection (should be in transaction)
-     * @param username Username of the pet owner to archive
-     * @return true if profile was archived successfully, false otherwise
-     */
     private boolean archivePetOwnerProfile(Connection conn, String username) throws SQLException {
         String sql = "UPDATE tbl_pet_owner SET archived = 1, archived_date = NOW() WHERE username = ?";
         
         try (PreparedStatement pstmt = conn.prepareStatement(sql)) {
             pstmt.setString(1, username);
             pstmt.executeUpdate();
-            System.out.println("Pet owner profile archived for username: " + username);
+            System.out.println(INDENT + "Pet owner profile archived for username: " + username);
             return true;
         }
     }
     
-    /**
-     * Updates adopter profile information based on user changes
-     * @param conn Database connection (should be in transaction)
-     * @param user User with updated information
-     * @return true if profile was updated successfully, false otherwise
-     */
     private boolean updateAdopterProfile(Connection conn, User user) throws SQLException {
         String sql = "UPDATE tbl_adopter SET adopter_email = ? WHERE username = ? AND archived = 0";
         
@@ -398,12 +365,7 @@ public class UserCRUD {
         }
     }
     
-    /**
-     * Updates pet owner profile information based on user changes
-     * @param conn Database connection (should be in transaction)
-     * @param user User with updated information
-     * @return true if profile was updated successfully, false otherwise
-     */
+
     private boolean updatePetOwnerProfile(Connection conn, User user) throws SQLException {
         String sql = "UPDATE tbl_pet_owner SET pet_owner_email = ? WHERE username = ? AND archived = 0";
         
@@ -431,25 +393,19 @@ public class UserCRUD {
             int rowsAffected = pstmt.executeUpdate();
             
             if (rowsAffected > 0) {
-                System.out.println("User deleted successfully.");
+                System.out.println(INDENT + "User deleted successfully.");
                 return true;
             } else {
-                System.out.println("No user found with ID: " + userId);
+                System.out.println(INDENT + "No user found with ID: " + userId);
             }
             
         } catch (SQLException e) {
-            System.err.println("Error deleting user: " + e.getMessage());
+            System.err.println(INDENT + "Error deleting user: " + e.getMessage());
         }
         
         return false;
     }
     
-    /**
-     * Authenticates a user with username and password
-     * @param username Username
-     * @param password Password
-     * @return User object if authentication successful, null otherwise
-     */
     public User authenticateUser(String username, String password) {
         String sql = "SELECT * FROM users WHERE username = ? AND password = ?";
         
@@ -466,7 +422,7 @@ public class UserCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error authenticating user: " + e.getMessage());
+            System.err.println(INDENT + "Error authenticating user: " + e.getMessage());
         }
         
         return null;
@@ -488,7 +444,7 @@ public class UserCRUD {
             }
             
         } catch (SQLException e) {
-            System.err.println("Error counting users: " + e.getMessage());
+            System.err.println(INDENT + "Error counting users: " + e.getMessage());
         }
         
         return 0;
